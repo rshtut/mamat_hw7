@@ -30,11 +30,11 @@ struct grades {
 int clone_course(void *this_course, void **output_course) {
 	struct course *new_course, *cur_course;
 	cur_course=(struct course*)this_course;
-	new_course=(struct course*)malloc(sizeof(struct course*));
+	new_course=(struct course*)malloc(sizeof(struct course));
 	if (!new_course) {
 		return -1;
 	}
-	new_course->name = (char*)malloc(strlen(cur_course->name));
+	new_course->name = (char*)malloc(strlen(cur_course->name)+1);
 	strcpy(new_course->name,cur_course->name);
 	new_course->grade=cur_course->grade;
 	*output_course=new_course;
@@ -43,28 +43,33 @@ int clone_course(void *this_course, void **output_course) {
 
 //destroy fuction for courses
 void course_destroy(void *course) {
-	free(course);
+	struct course *cur_course;
+	cur_course=(struct course*)course;
+	free(cur_course->name);
+	free(cur_course);
 }
 
 //clone function for students
 int clone_student(void *this_student, void **output_student) {
 	struct student *new_student, *cur_student;
 	cur_student=(struct student*)this_student;
-	new_student=(struct student*)malloc(sizeof(struct student*));
+	new_student=(struct student*)malloc(sizeof(struct student));
 	if (!new_student) {
 		return -1;
 	}
-	new_student->name = (char*)malloc(strlen(cur_student->name));
+	new_student->name = (char*)malloc(strlen(cur_student->name)+1);
 	strcpy(new_student->name,cur_student->name);
 	new_student->id=cur_student->id;
 	struct node *cur_course, *tmp_course;
+	struct course *course;
 	//initializing a course list for the new student
 	cur_course=list_begin(cur_student->courses);
 	new_student->courses=list_init(clone_course, course_destroy);
 	//cloning the courses from the original student
 	while(cur_course) {
 		tmp_course=cur_course;
-		list_push_back(new_student->courses, tmp_course);
+		course=list_get(tmp_course);
+		list_push_back(new_student->courses, course);
 		cur_course=list_next(tmp_course);
 	}
 	*output_student=new_student;
@@ -77,14 +82,15 @@ void student_destroy(void *student) {
 	cur_student=(struct student*)student;
 	//calling the destroy function for the course list
 	list_destroy(cur_student->courses);
-	free(student);
+	free(cur_student->name);
+	free(cur_student);
 }
 
 
 //initializing the grades struct with zero students
 struct grades* grades_init() {
 	struct grades *grades;
-	grades = (struct grades*)malloc(sizeof(struct grades*));
+	grades = (struct grades*)malloc(sizeof(struct grades));
     if (!grades) {
         return NULL;
     }
@@ -109,15 +115,19 @@ int grades_add_student(struct grades *grades, const char *name, int id) {
 		return -1;
 	}
 	struct student *new_student;
-	new_student=(struct student*)malloc(sizeof(struct student*));
+	new_student=(struct student*)malloc(sizeof(struct student));
 	if (!new_student) {
+		free(new_student);
 		return -1;
 	}
 	new_student->id=id;
-	new_student->name = (char *)malloc(strlen(name));
+	new_student->name = (char *)malloc(strlen(name)+1);
 	strcpy(new_student->name,name);
 	new_student->courses=list_init(clone_course,course_destroy);
 	list_push_back(grades->students,new_student);
+	list_destroy(new_student->courses);
+	free(new_student->name);
+	free(new_student);
 	return 0;
 }
 
@@ -151,14 +161,17 @@ int grades_add_grade(struct grades *grades,
 		cur_course_node=list_next(cur_course_node);
 	}
 	struct course *course;
-	course=(struct course*)malloc(sizeof(struct course*));
+	course=(struct course*)malloc(sizeof(struct course));
 	if (!course) {
+		free(course);
 		return -1;
 	}
-	course->name = (char*)malloc(strlen(name));
+	course->name = (char*)malloc(strlen(name)+1);
 	strcpy(course->name,name);
 	course->grade=grade;
 	list_push_back(student->courses,course);
+	free(course->name);
+	free(course);
 	return 0;
 }
 
@@ -177,7 +190,7 @@ float grades_calc_avg(struct grades *grades, int id, char **out) {
 		return -1;
 	}
 
-	*out=malloc(sizeof(char)*(strlen(student->name)));
+	*out=malloc(strlen(student->name)+1);
 	strcpy(*out,student->name);
 	float average=0, tot_grades=0;
 	int counter=0;
